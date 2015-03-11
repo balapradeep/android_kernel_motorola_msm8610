@@ -81,6 +81,7 @@ static void q6asm_reset_buf_state(struct audio_client *ac);
 
 static int q6asm_map_channels(u8 *channel_mapping, uint32_t channels);
 void *q6asm_mmap_apr_reg(void);
+int q6asm_mmap_apr_dereg(void);
 
 static int q6asm_is_valid_session(struct apr_client_data *data, void *priv);
 
@@ -109,21 +110,7 @@ static char *out_buffer;
 static char *in_buffer;
 
 
-int q6asm_mmap_apr_dereg(void)
-{
-	int c;
 
-	c = atomic_sub_return(1, &this_mmap.ref_cnt);
-	if (c == 0) {
-		apr_deregister(this_mmap.apr);
-		pr_debug("%s: APR De-Register common port\n", __func__);
-	} else if (c < 0) {
-		pr_err("%s: APR Common Port Already Closed\n", __func__);
-		atomic_set(&this_mmap.ref_cnt, 0);
-	}
-
-	return 0;
-}
 
 static int audio_output_latency_dbgfs_open(struct inode *inode,
 							struct file *file)
@@ -795,6 +782,23 @@ void *q6asm_mmap_apr_reg(void)
 	return this_mmap.apr;
 fail:
 	return NULL;
+}
+
+
+int q6asm_mmap_apr_dereg(void)
+{
+	int c;
+
+	c = atomic_sub_return(1, &this_mmap.ref_cnt);
+	if (c == 0) {
+		apr_deregister(this_mmap.apr);
+		pr_debug("%s: APR De-Register common port\n", __func__);
+	} else if (c < 0) {
+		pr_err("%s: APR Common Port Already Closed\n", __func__);
+		atomic_set(&this_mmap.ref_cnt, 0);
+	}
+
+	return 0;
 }
 
 struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
@@ -4532,3 +4536,4 @@ static int __init q6asm_init(void)
 }
 
 device_initcall(q6asm_init);
+
